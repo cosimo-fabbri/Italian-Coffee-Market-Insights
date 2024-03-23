@@ -1,0 +1,89 @@
+*DATASET CONTENT AND DUPLICATE VALUES*;
+
+proc contents data=caffe.questionario;run;
+proc sort data=caffe.questionario out=caffe.questionario; by id; run;
+
+*DATA CLEANING*;
+
+*missing values*;
+
+proc means data=caffe.questionario nmiss; var _numeric_; run;
+data caffe.questionario1; set caffe.questionario; if eticita_percezione=. then delete; run;
+data caffe.questionario1; set caffe.questionario1; if sostenibilita_preoccupazione=. then delete;run;
+data caffe.questionario1; set caffe.questionario1; if sostenibilita_importanza=. then delete;run;
+data caffe.questionario1; set caffe.questionario1; if certificazioni_ambiente=. then delete;run;
+data caffe.questionario1; set caffe.questionario1; if certificazioni_migliorare=. then delete;run;
+proc means data=caffe.questionario1 nmiss; var _numeric_; run;
+
+proc freq data=caffe.questionario1;
+table sesso eta residenza occupazione consumo consumo_settimana consumo_modalita
+certificazioni_awereness certificazioni_acquisto confezioni spesa differenza_spesa; run;  
+
+data caffe.questionario1; set caffe.questionario1; if id=16 then delete; run;
+data caffe.questionario1; set caffe.questionario1; if id=98 then delete; run;
+
+*aberrant values*;
+
+proc means data=caffe.questionario1 min max; var _numeric_; run;
+
+*outlier values*;
+
+proc univariate data=caffe.questionario1 plot; var eta; output out=boxstats qrange=iqr q1=q1 q3=q3; run;
+data _null_; set boxstats;
+call symput ('q1',q1);
+call symput ('q3',q3);
+call symput ('iqr',iqr);
+run;
+%put &q1; %put &q3; %put &iqr;
+data outliers_mild; set caffe.questionario1;
+if (eta le &q1-1.5*&iqr) or (eta ge &q3+1.5*&iqr); run;
+
+*RENAME VARIABLES*;
+
+data caffe.questionario2; set caffe.questionario1; rename sostenibilita_percezione=d1 
+eticita_percezione=d2 sostenibilita_preoccupazione=d3 eticita_preoccupazione=d4 
+sostenibilita_importanza=d5 eticita_importanza=d6 sostenibilita_migliorare=d7 
+certificazioni_importanza=d8 certificazioni_eticita=d9 
+certificazioni_ambiente=d10 certificazioni_migliorare=d11 incremento_spesa=d12;run;
+
+data caffe.questionario2; set caffe.questionario2;
+attrib d1 label= "quanto reputi sostenibile il prodotto caffe"
+d2 label="quanto reputi etico il prodotto caffe"
+d3 label="quanto sei preoccupato in merito alle conseguenze ambientali del caffe"
+d4 label="quanto sei preoccupato in merito alle conseguenze sociali del caffe"
+d5 label="quanto è importante la sostenibilità nello scegliere il caffe"
+d6 label="quanto è importante l'eticita nello scegliere il caffe da acquistare"
+d7 label="quanto importante che si cerchi di migliorare l'impatto del caffe sull'ambiente"
+d8 label="quanto sono importanti per te le certificazioni nell'acquisto di caffe"
+d9 label="quanto pensi sia d'aiuto ai lavoratori una certificazione"
+d10 label="quanot pensi sia d'aiuto all'ambiente una certificazione"
+d11 label="quanto è importante per te che si cerchi di certificare il caffe"
+d12 label="quanto sei d'accordo con l'ipotesi di spendere di più per un caffe certificato";run;
+
+*SIZE EFFECT EPURATION*;
+proc corr data=caffe.questionario2 outp=corr;var d1-d12;run;
+
+data caffe.questionario_taglia; set caffe.questionario2; 
+media= mean(of d1-d12);
+min= min(of d1-d12);
+max=max(of d1-d12);
+array p1 d1-d12;
+array p2 new1-new12; do over p2;
+if p1>media then p2=(max-p1)/(max-media);
+if p1<media then p2=(p1-min)/(min-media);
+if p1=media then p2=0;end;run;
+
+proc means data=caffe.questionario_taglia; var new:;run;
+
+
+*PRINCIPANT COMPONENT ANALYSIS*;
+proc corr data=caffe.questionario_taglia out=corrACP; 
+var new1 new2 new3 new4 new7  new9 new10 new11;run;
+
+proc princomp data=caffe.questionario_taglia out=work.prin_secondo outstat=statistics; 
+var new1 new2 new3 new4 new7 new9 new10 new11 ; run;
+proc princomp data=caffe.questionario_taglia out=work.prin_secondo2 
+outstat=statistics n=4 plots=patternprofile; 
+var new1 new2 new3 new4 new7  new9 new10 new11; run;
+
+
