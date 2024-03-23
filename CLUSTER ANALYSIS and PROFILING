@@ -1,0 +1,69 @@
+*CLUSTER ANALYSIS*;
+
+*Hierarchical cluster analysis*;
+
+proc cluster data=caffe.acp method=ward outtree=dendro rsq; var prin1-prin4;
+ copy _all_; id id; run;
+proc tree; run;
+
+proc sort data=dendro; by _ncl_; run;
+data dendro_plot; set dendro; if _ncl_ lt 10; run;
+
+proc sort data=dendro_plot out=series_plot; by _ncl_; run;
+proc sgplot data=series_plot; series x=_ncl_ y=_rsq_/;
+xaxis grid;
+yaxis grid; run; 
+
+proc sgplot data=series_plot; series x=_ncl_ y=_sprsq_/;
+xaxis grid;
+yaxis grid; run; 
+
+*Non-Hierarchical cluster analysis*;
+
+proc fastclus data=caffe.acp maxclusters=4 maxiter=50 out=partition4;
+id id ; var prin1-prin4;run;
+
+proc candisc data=partition4 out=scan; class cluster;
+var new1 new2 new3 new4 new7 new9 new10 new11; run;
+ 
+proc sgplot data=scan; scatter y=can2 x=can1/ group=cluster;run;
+
+*PROFILING the 4 CLUSTER*
+
+*Profiling using Quantitative-Variables*;
+
+proc sort data=partition4; by cluster;run;
+data sample; set partition4; cluster=5; run;
+data cluster_all; set partition4 sample; run;
+
+proc ttest data=cluster_all; var eta; class cluster; where cluster=1 or cluster=5; run;
+proc ttest data=cluster_all; var eta; class cluster; where cluster=2 or cluster=5; run;
+proc ttest data=cluster_all; var eta; class cluster; where cluster=3 or cluster=5; run;
+proc ttest data=cluster_all; var eta; class cluster; where cluster=4 or cluster=5; run;
+
+proc ttest data=cluster_all; var d5; class cluster; where cluster=1 or cluster=5; run;
+proc ttest data=cluster_all; var d5; class cluster; where cluster=2 or cluster=5; run;
+proc ttest data=cluster_all; var d5; class cluster; where cluster=3 or cluster=5; run;
+proc ttest data=cluster_all; var d5; class cluster; where cluster=4 or cluster=5; run;
+
+proc ttest data=cluster_all; var d6; class cluster; where cluster=1 or cluster=5; run;
+proc ttest data=cluster_all; var d6; class cluster; where cluster=2 or cluster=5; run;
+proc ttest data=cluster_all; var d6; class cluster; where cluster=3 or cluster=5; run;
+proc ttest data=cluster_all; var d6; class cluster; where cluster=4 or cluster=5; run;
+
+proc ttest data=cluster_all; var d8; class cluster; where cluster=1 or cluster=5; run;
+proc ttest data=cluster_all; var d8; class cluster; where cluster=2 or cluster=5; run;
+proc ttest data=cluster_all; var d8; class cluster; where cluster=3 or cluster=5; run;
+proc ttest data=cluster_all; var d8; class cluster; where cluster=4 or cluster=5; run;
+
+proc ttest data=cluster_all; var d12; class cluster; where cluster=1 or cluster=5; run;
+proc ttest data=cluster_all; var d12; class cluster; where cluster=2 or cluster=5; run;
+proc ttest data=cluster_all; var d12; class cluster; where cluster=3 or cluster=5; run;
+proc ttest data=cluster_all; var d12; class cluster; where cluster=4 or cluster=5; run;
+
+*Profiling using Qualitative-Variable*;
+
+proc freq data=partition4;
+ tables (sesso occupazione residenza consumo consumo_settimana consumo_modalita 
+ certificazioni_awereness certificazioni_acquisto confezioni spesa
+ differenza_spesa)*cluster/chisq; run;
